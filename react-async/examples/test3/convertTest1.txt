@@ -1,0 +1,186 @@
+/////////// Managing errors and return values ////////////////
+
+//promise code
+db.get('docid').catch(function (err) {
+  if (err.name === 'not_found') {
+    return {}; // new doc
+  }
+  throw err; // some error other than 404
+}).then(function (doc) {
+  console.log(doc);
+})
+
+//to async
+let doc;
+try {
+  doc = await db.get('docid');
+} catch (err) {
+  if (err.name === 'not_found') {
+    doc = {};
+  } else {
+    throw err; // some error other than 404
+  }
+}
+console.log(doc);
+
+
+///////////// Potential gotchas ///////////////////////////
+
+async function createNewDoc() {
+  let response = await db.post({}); // post a new doc
+  return await db.get(response.id); // find by id
+}
+
+async function printDoc() {
+  try {
+    let doc = await createNewDoc();
+    console.log(doc);
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+//////////////////// LOOP ////////////////////////////////////
+
+//---------------------------------
+var promise = Promise.resolve();
+var docs = [{}, {}, {}];
+
+docs.forEach(function (doc) {
+  promise = promise.then(function () {
+    return db.post(doc);
+  });
+});
+
+promise.then(function () {
+  // now all our docs have been saved
+});
+
+//----------------------------------
+docs.forEach(function (doc) {
+  promise = promise.then(db.post(doc));
+});
+
+//----------------------------------
+let docs = [{}, {}, {}];
+
+for (let i = 0; i < docs.length; i++) {
+  let doc = docs[i];
+  await db.post(doc);
+}
+//----------------------------------
+//----------------------------------
+
+let docs = [{}, {}, {}];
+
+for (let doc of docs) {
+  await db.post(doc);
+}
+
+//----------------------------------
+let docs = [{}, {}, {}];
+
+// WARNING: this won't work
+docs.forEach(function (doc) {
+  await db.post(doc);
+});
+//----------------------------------
+let docs = [{}, {}, {}];
+
+// WARNING: this won't work
+docs.forEach(async function (doc, i) {
+  await db.post(doc);
+  console.log(i);
+});
+console.log('main loop done');
+//----------------------------------
+
+
+////////////////// Concurrent loops ////////////////////////////
+
+
+//----------------------------------
+var docs = [{}, {}, {}];
+
+return Promise.all(docs.map(function (doc) {
+  return db.post(doc);
+})).then(function (results) {
+  console.log(results);
+});
+
+//----------------------------------
+let docs = [{}, {}, {}];
+let promises = docs.map((doc) => db.post(doc));
+
+let results = [];
+for (let promise of promises) {
+  results.push(await promise);
+}
+console.log(results);
+
+
+//----------------------------------
+
+let docs = [{}, {}, {}];
+let promises = docs.map((doc) => db.post(doc));
+
+// WARNING: this doesn't work
+let results = promises.map(async function(promise) {
+  return await promise;
+});
+
+//----------------------------------
+let docs = [{}, {}, {}];
+let promises = docs.map((doc) => db.post(doc));
+
+let results = await Promise.all(promises);
+console.log(results);
+// This will just be a list of promises :(
+console.log(results);
+
+/////////////////////////////////////////////////
+require("babel-polyfill");
+ 
+import request from "request";
+ 
+// promise returning function
+function get (url){
+  return new Promise(function(resolve, reject){
+    request({
+      method: 'GET',
+      url: url,
+      json: true,
+      headers: {
+        'User-Agent': 'request'
+      }
+    }, function(err, resp, body){
+      if(err){
+        reject(err);
+      } else {
+        resolve(body);
+      }
+    });
+  });
+}
+ 
+ 
+// create a new "async" function so we can use the "await" keyword
+async function printPublicGists(){
+  // "await" resolution or rejection of the promise
+  // use try/catch for error handling
+  try {
+    var gists = await get('https://api.github.com/gists/public');
+    
+    // now you can write this like syncronous code!
+    gists.forEach(function(gist){
+      console.log(gist.description);
+    });
+  } catch (e) {
+    // promise was rejected and we can handle errors with try/catch!
+  }
+}
+ 
+ 
+printPublicGists();
+
+///////////////////////////////////////////////////////
